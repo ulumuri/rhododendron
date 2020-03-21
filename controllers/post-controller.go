@@ -51,7 +51,12 @@ func (env *Env) FindPostByID(w http.ResponseWriter, r *http.Request, ps httprout
 func (env *Env) DeletePostByID(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer r.Body.Close()
 
-	_, err := env.DB.DeleteByID(ps.ByName("id"))
+	id, err := primitive.ObjectIDFromHex(ps.ByName("id"))
+	if err != nil {
+		respondWithJson(w, http.StatusBadRequest, err.Error())
+	}
+
+	_, err = env.DB.DeleteByID(id)
 	if err != nil {
 		respondWithJson(w, http.StatusBadRequest, err.Error())
 	}

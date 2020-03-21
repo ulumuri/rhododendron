@@ -41,7 +41,7 @@ func (c *Conn) FindByID(id primitive.ObjectID) (*Post, error) {
 	return post, nil
 }
 
-func (c *Conn) DeleteByID(id string) (*mongo.DeleteResult, error) {
+func (c *Conn) DeleteByID(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	filter := bson.M{"_id": id}
 	postCollection := c.Collection(POST_COLL)
 	result, err := postCollection.DeleteOne(context.Background(), filter)

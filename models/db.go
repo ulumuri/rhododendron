@@ -8,7 +8,7 @@ import (
 type Requester interface {
 	Insert(post *Post) (*mongo.InsertOneResult, error)
 	FindByID(id primitive.ObjectID) (*Post, error)
-	DeleteByID(id string) (*mongo.DeleteResult, error)
+	DeleteByID(id primitive.ObjectID) (*mongo.DeleteResult, error)
 }
 
 type Conn struct {

@@ -2,8 +2,9 @@ package controllers
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/julienschmidt/httprouter"
 
@@ -11,7 +12,7 @@ import (
 )
 
 type Env struct {
-	db models.Requester
+	DB models.Requester
 }
 
 func (env *Env) InsertPost(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -23,7 +24,7 @@ func (env *Env) InsertPost(w http.ResponseWriter, r *http.Request, _ httprouter.
 		respondWithJson(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	_, err = env.db.Insert(post)
+	_, err = env.DB.Insert(post)
 	if err != nil {
 		respondWithJson(w, http.StatusInternalServerError, err.Error())
 	}
@@ -34,7 +35,12 @@ func (env *Env) InsertPost(w http.ResponseWriter, r *http.Request, _ httprouter.
 func (env *Env) FindPostByID(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer r.Body.Close()
 
-	post, err := env.db.FindByID(ps.ByName("id"))
+	id, err := primitive.ObjectIDFromHex(ps.ByName("id"))
+	if err != nil {
+		respondWithJson(w, http.StatusBadRequest, err.Error())
+	}
+
+	post, err := env.DB.FindByID(id)
 	if err != nil {
 		respondWithJson(w, http.StatusBadRequest, err.Error())
 	}
@@ -45,19 +51,10 @@ func (env *Env) FindPostByID(w http.ResponseWriter, r *http.Request, ps httprout
 func (env *Env) DeletePostByID(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	defer r.Body.Close()
 
-	_, err := env.db.DeleteByID(ps.ByName("id"))
+	_, err := env.DB.DeleteByID(ps.ByName("id"))
 	if err != nil {
 		respondWithJson(w, http.StatusBadRequest, err.Error())
 	}
 
 	respondWithJson(w, http.StatusOK, map[string]string{"result": "succes"})
-}
-
-func (env *Env) DefineEndPoints() {
-	router := httprouter.New()
-	router.POST("/posts", env.InsertPost)
-	router.GET("/posts", env.FindPostByID)
-	router.DELETE("/posts", env.DeletePostByID)
-
-	log.Fatal(http.ListenAndServe(":8080", router))
 }

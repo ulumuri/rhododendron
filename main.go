@@ -3,7 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
+	"os"
 	"time"
+
+	"github.com/julienschmidt/httprouter"
+	"github.com/ulumuri/rhododendron/controllers"
+
+	"github.com/joho/godotenv"
 
 	"github.com/ulumuri/rhododendron/models"
 
@@ -11,10 +19,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func InitiateMongoClient(ctx context.Context) *mongo.Client {
+func initiateMongoClient(ctx context.Context, uri string) *mongo.Client {
 	var err error
 	var client *mongo.Client
-	uri := ""
 	opts := options.Client()
 	opts.ApplyURI(uri)
 	opts.SetMaxPoolSize(5)
@@ -24,11 +31,26 @@ func InitiateMongoClient(ctx context.Context) *mongo.Client {
 	return client
 }
 
+func getDotEnvVariable(key string) string {
+	err := godotenv.Load(".env")
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
+
+	return os.Getenv(key)
+}
+
 func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	client := InitiateMongoClient(ctx)
+	client := initiateMongoClient(ctx, getDotEnvVariable("DB_URI"))
 
-	conn := models.Connect(client, ctx, "api_test")
-	conn.DefineEndPoints()
+	conn := models.Connect(client, "api_test")
+	env := controllers.Env{DB: conn}
+	router := httprouter.New()
+	router.POST("/posts/insert", env.InsertPost)
+	router.GET("/posts/get/:id", env.FindPostByID)
+	router.DELETE("/posts/delete/:id", env.DeletePostByID)
+
+	log.Fatal(http.ListenAndServe(":8080", router))
 }

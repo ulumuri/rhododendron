@@ -1,6 +1,8 @@
 package models
 
 import (
+	"context"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,8 +20,8 @@ type Post struct {
 const POST_COLL = "posts"
 
 func (c *Conn) Insert(post *Post) (*mongo.InsertOneResult, error) {
-	postCollection := c.db.Collection(POST_COLL)
-	postResult, err := postCollection.InsertOne(c.ctx, post)
+	postCollection := c.Collection(POST_COLL)
+	postResult, err := postCollection.InsertOne(context.Background(), post)
 	if err != nil {
 		return nil, err
 	}
@@ -27,11 +29,11 @@ func (c *Conn) Insert(post *Post) (*mongo.InsertOneResult, error) {
 	return postResult, nil
 }
 
-func (c *Conn) FindByID(id string) (*Post, error) {
+func (c *Conn) FindByID(id primitive.ObjectID) (*Post, error) {
 	post := &Post{}
 	filter := bson.M{"_id": id}
-	postCollection := c.db.Collection(POST_COLL)
-	err := postCollection.FindOne(c.ctx, filter).Decode(post)
+	postCollection := c.Collection(POST_COLL)
+	err := postCollection.FindOne(context.Background(), filter).Decode(post)
 	if err != nil {
 		return nil, err
 	}
@@ -41,8 +43,8 @@ func (c *Conn) FindByID(id string) (*Post, error) {
 
 func (c *Conn) DeleteByID(id string) (*mongo.DeleteResult, error) {
 	filter := bson.M{"_id": id}
-	postCollection := c.db.Collection(POST_COLL)
-	result, err := postCollection.DeleteOne(c.ctx, filter)
+	postCollection := c.Collection(POST_COLL)
+	result, err := postCollection.DeleteOne(context.Background(), filter)
 	if err != nil {
 		return nil, err
 	}

@@ -1,4 +1,4 @@
-package models
+package database
 
 import (
 	"context"
@@ -17,10 +17,20 @@ type Post struct {
 	Shared    []primitive.DBPointer `bson:"shared,omitempty" json:"shared,omitempty"`
 }
 
+type PostStore struct {
+	db *mongo.Database
+}
+
+func NewPostStore(db *mongo.Database) *PostStore {
+	return &PostStore{
+		db: db,
+	}
+}
+
 const POST_COLL = "posts"
 
-func (c *Conn) Insert(post *Post) (*mongo.InsertOneResult, error) {
-	postCollection := c.Collection(POST_COLL)
+func (s *PostStore) Create(post *Post) (*mongo.InsertOneResult, error) {
+	postCollection := s.db.Collection(POST_COLL)
 	postResult, err := postCollection.InsertOne(context.Background(), post)
 	if err != nil {
 		return nil, err
@@ -29,10 +39,10 @@ func (c *Conn) Insert(post *Post) (*mongo.InsertOneResult, error) {
 	return postResult, nil
 }
 
-func (c *Conn) FindByID(id primitive.ObjectID) (*Post, error) {
+func (s *PostStore) Get(id primitive.ObjectID) (*Post, error) {
 	post := &Post{}
 	filter := bson.M{"_id": id}
-	postCollection := c.Collection(POST_COLL)
+	postCollection := s.db.Collection(POST_COLL)
 	err := postCollection.FindOne(context.Background(), filter).Decode(post)
 	if err != nil {
 		return nil, err
@@ -41,13 +51,34 @@ func (c *Conn) FindByID(id primitive.ObjectID) (*Post, error) {
 	return post, nil
 }
 
-func (c *Conn) DeleteByID(id primitive.ObjectID) (*mongo.DeleteResult, error) {
+func (s *PostStore) Delete(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	filter := bson.M{"_id": id}
-	postCollection := c.Collection(POST_COLL)
+	postCollection := s.db.Collection(POST_COLL)
 	result, err := postCollection.DeleteOne(context.Background(), filter)
 	if err != nil {
 		return nil, err
 	}
 
 	return result, nil
+}
+
+func (s *PostStore) ListAll() (*[]Post, error) {
+	postCollection := s.db.Collection(POST_COLL)
+	cursor, err := postCollection.Find(context.Background(), bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(context.Background())
+
+	var posts []Post
+	for cursor.Next(context.Background()) {
+		post := Post{}
+		err = cursor.Decode(&post)
+		if err != nil {
+			return nil, err
+		}
+		posts = append(posts, post)
+	}
+
+	return &posts, nil
 }

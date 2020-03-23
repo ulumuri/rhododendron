@@ -51,5 +51,3 @@ func (c *Conn) DeleteByID(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 
 	return result, nil
 }
-
-func (c *Conn) DefineEndPoints() {}

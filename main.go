@@ -8,13 +8,10 @@ import (
 	"os"
 	"time"
 
-	"github.com/julienschmidt/httprouter"
-	"github.com/ulumuri/rhododendron/controllers"
-
 	"github.com/joho/godotenv"
-
+	"github.com/julienschmidt/httprouter"
+	"github.com/ulumuri/rhododendron/api"
 	"github.com/ulumuri/rhododendron/models"
-
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -24,7 +21,6 @@ func initiateMongoClient(ctx context.Context, uri string) *mongo.Client {
 	var client *mongo.Client
 	opts := options.Client()
 	opts.ApplyURI(uri)
-	opts.SetMaxPoolSize(5)
 	if client, err = mongo.Connect(ctx, opts); err != nil {
 		fmt.Println(err.Error())
 	}
@@ -46,7 +42,7 @@ func main() {
 	client := initiateMongoClient(ctx, getDotEnvVariable("DB_URI"))
 
 	conn := models.Connect(client, "api_test")
-	env := controllers.Env{DB: conn}
+	env := api.APIServer{DB: conn}
 	router := httprouter.New()
 	router.POST("/posts/insert", env.InsertPost)
 	router.GET("/posts/get/:id", env.FindPostByID)

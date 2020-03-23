@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -12,14 +11,11 @@ import (
 
 func ConnectToDB() (*mongo.Database, error) {
 	dbName := "api_test"
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
 	uri, err := getDotEnvVariable("DB_URI")
 	if err != nil {
 		return nil, err
 	}
-	client, err := initiateMongoClient(ctx, uri)
+	client, err := getMongoClient(context.Background(), uri)
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +23,7 @@ func ConnectToDB() (*mongo.Database, error) {
 	return client.Database(dbName), nil
 }
 
-func initiateMongoClient(ctx context.Context, uri string) (*mongo.Client, error) {
+func getMongoClient(ctx context.Context, uri string) (*mongo.Client, error) {
 	opts := options.Client()
 	opts.ApplyURI(uri)
 	client, err := mongo.Connect(ctx, opts)

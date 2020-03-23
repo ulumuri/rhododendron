@@ -27,10 +27,10 @@ func NewPostStore(db *mongo.Database) *PostStore {
 	}
 }
 
-const POST_COLL = "posts"
+const postCollectionHandle = "posts"
 
 func (s *PostStore) Create(post *Post) (*mongo.InsertOneResult, error) {
-	postCollection := s.db.Collection(POST_COLL)
+	postCollection := s.db.Collection(postCollectionHandle)
 	postResult, err := postCollection.InsertOne(context.Background(), post)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func (s *PostStore) Create(post *Post) (*mongo.InsertOneResult, error) {
 func (s *PostStore) Get(id primitive.ObjectID) (*Post, error) {
 	post := &Post{}
 	filter := bson.M{"_id": id}
-	postCollection := s.db.Collection(POST_COLL)
+	postCollection := s.db.Collection(postCollectionHandle)
 	err := postCollection.FindOne(context.Background(), filter).Decode(post)
 	if err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (s *PostStore) Get(id primitive.ObjectID) (*Post, error) {
 
 func (s *PostStore) Delete(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 	filter := bson.M{"_id": id}
-	postCollection := s.db.Collection(POST_COLL)
+	postCollection := s.db.Collection(postCollectionHandle)
 	result, err := postCollection.DeleteOne(context.Background(), filter)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (s *PostStore) Delete(id primitive.ObjectID) (*mongo.DeleteResult, error) {
 }
 
 func (s *PostStore) ListAll() (*[]Post, error) {
-	postCollection := s.db.Collection(POST_COLL)
+	postCollection := s.db.Collection(postCollectionHandle)
 	cursor, err := postCollection.Find(context.Background(), bson.M{})
 	if err != nil {
 		return nil, err

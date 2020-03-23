@@ -13,9 +13,7 @@ func NewAPI(db *mongo.Database) *API {
 	postStore := database.NewPostStore(db)
 	post := NewPostResource(postStore)
 
-	api := &API{
+	return &API{
 		Post: post,
 	}
-
-	return api
 }

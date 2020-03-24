@@ -3,6 +3,8 @@ package database
 import (
 	"context"
 
+	"github.com/ulumuri/rhododendron/errors"
+	"github.com/ulumuri/rhododendron/util/runtime"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,55 +29,106 @@ func NewPostStore(db *mongo.Database) *PostStore {
 	}
 }
 
-const postCollectionHandle = "posts"
+const postCollectionHandle string = "posts"
 
 func (s *PostStore) Create(post *Post) (*mongo.InsertOneResult, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		dbErr := errors.NewCollectionNotFound(runtime.Trace(), "")
+		apiErr := errors.NewInternalError(dbErr, "")
+		return nil, apiErr
+	}
 	postCollection := s.db.Collection(postCollectionHandle)
-	postResult, err := postCollection.InsertOne(context.Background(), post)
+	postResult, err := postCollection.InsertOne(context.TODO(), post)
 	if err != nil {
-		return nil, err
+		dbErr := errors.NewUnknownCause(err, runtime.Trace())
+		apiErr := errors.NewUnknown(dbErr, "")
+		return nil, apiErr
 	}
 
 	return postResult, nil
 }
 
-func (s *PostStore) Get(id primitive.ObjectID) (*Post, error) {
-	post := &Post{}
-	filter := bson.M{"_id": id}
+func (s *PostStore) Get(id string) (*Post, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		dbErr := errors.NewCollectionNotFound(runtime.Trace(), "")
+		apiErr := errors.NewInternalError(dbErr, "")
+		return nil, apiErr
+	}
 	postCollection := s.db.Collection(postCollectionHandle)
-	err := postCollection.FindOne(context.Background(), filter).Decode(post)
+
+	post := &Post{}
+	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		dbErr := errors.NewInvalidID("")
+		apiErr := errors.NewInvalidData(dbErr, "")
+		return nil, apiErr
+	}
+	filter := bson.M{"_id": objectID}
+
+	err = postCollection.FindOne(context.TODO(), filter).Decode(post)
+	if err != nil {
+		dbErr := errors.NewIDNotFound("")
+		apiErr := errors.NewInvalidData(dbErr, "")
+		return nil, apiErr
 	}
 
 	return post, nil
 }
 
-func (s *PostStore) Delete(id primitive.ObjectID) (*mongo.DeleteResult, error) {
-	filter := bson.M{"_id": id}
+func (s *PostStore) Delete(id string) (*mongo.DeleteResult, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		dbErr := errors.NewCollectionNotFound(runtime.Trace(), "")
+		apiErr := errors.NewInternalError(dbErr, "")
+		return nil, apiErr
+	}
 	postCollection := s.db.Collection(postCollectionHandle)
-	result, err := postCollection.DeleteOne(context.Background(), filter)
+
+	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		dbErr := errors.NewInvalidID("")
+		apiErr := errors.NewInvalidData(dbErr, "")
+		return nil, apiErr
+	}
+	filter := bson.M{"_id": objectID}
+
+	result, err := postCollection.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		dbErr := errors.NewIDNotFound("")
+		apiErr := errors.NewInvalidData(dbErr, "")
+		return nil, apiErr
 	}
 
 	return result, nil
 }
 
 func (s *PostStore) ListAll() (*[]Post, error) {
-	postCollection := s.db.Collection(postCollectionHandle)
-	cursor, err := postCollection.Find(context.Background(), bson.M{})
-	if err != nil {
-		return nil, err
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		dbErr := errors.NewCollectionNotFound(runtime.Trace(), "")
+		apiErr := errors.NewInternalError(dbErr, "")
+		return nil, apiErr
 	}
-	defer cursor.Close(context.Background())
+	postCollection := s.db.Collection(postCollectionHandle)
+
+	cursor, err := postCollection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		dbErr := errors.NewUnknownCause(err, runtime.Trace())
+		apiErr := errors.NewUnknown(dbErr, "")
+		return nil, apiErr
+	}
+	defer cursor.Close(context.TODO())
 
 	var posts []Post
-	for cursor.Next(context.Background()) {
+	for cursor.Next(context.TODO()) {
 		post := Post{}
 		err = cursor.Decode(&post)
 		if err != nil {
-			return nil, err
+			dbErr := errors.NewUnknownCause(err, runtime.Trace())
+			apiErr := errors.NewUnknown(dbErr, "")
+			return nil, apiErr
 		}
 		posts = append(posts, post)
 	}

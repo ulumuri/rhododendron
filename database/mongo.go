@@ -4,8 +4,6 @@ import (
 	"context"
 	"os"
 
-	"github.com/ulumuri/rhododendron/util/runtime"
-
 	"github.com/ulumuri/rhododendron/errors"
 
 	"github.com/joho/godotenv"
@@ -14,19 +12,19 @@ import (
 )
 
 func ConnectToDB() (*mongo.Database, error) {
-	dbName := "api_test"
+	const databaseName string = "api_test"
+
 	uri, err := getDotEnvVariable("DB_URI")
 	if err != nil {
-		return nil, err
-	}
-	client, err := getMongoClient(context.TODO(), uri)
-	if err != nil {
-		dbErr := errors.NewDatabaseNotFound(runtime.Trace(), "")
-		apiErr := errors.NewInternalError(dbErr, "")
-		return nil, apiErr
+		return nil, errors.NewFailedConnection("", err)
 	}
 
-	return client.Database(dbName), nil
+	client, err := getMongoClient(context.TODO(), uri)
+	if err != nil {
+		return nil, errors.NewFailedConnection("", err)
+	}
+
+	return client.Database(databaseName), nil
 }
 
 func getMongoClient(ctx context.Context, uri string) (*mongo.Client, error) {
@@ -34,9 +32,7 @@ func getMongoClient(ctx context.Context, uri string) (*mongo.Client, error) {
 	opts.ApplyURI(uri)
 	client, err := mongo.Connect(ctx, opts)
 	if err != nil {
-		dbErr := errors.NewUnknownCause(err, runtime.Trace())
-		apiErr := errors.NewFailedConnection(dbErr, "")
-		return nil, apiErr
+		return nil, err
 	}
 
 	return client, nil

@@ -27,7 +27,7 @@ func RespondWithJsonStatus(w http.ResponseWriter, payload *errors.StatusError) {
 func RespondWithJson(w http.ResponseWriter, payload interface{}) {
 	response, err := json.Marshal(payload)
 	if err != nil {
-		apiErr := errors.NewBadRequest("")
+		apiErr := errors.NewBadRequest("", err)
 		RespondWithJsonStatus(w, apiErr)
 		return
 	}

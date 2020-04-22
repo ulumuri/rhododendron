@@ -7,14 +7,14 @@ import (
 	"github.com/julienschmidt/httprouter"
 	"github.com/ulumuri/rhododendron/database"
 	"github.com/ulumuri/rhododendron/errors"
-	api "github.com/ulumuri/rhododendron/util/api"
+	"github.com/ulumuri/rhododendron/util/api"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type PostStore interface {
 	Create(*database.Post) (*mongo.InsertOneResult, error)
 	Get(string) (*database.Post, error)
-	Delete(string) (*mongo.DeleteResult, error)
+	Delete(string) (*database.Post, error)
 	ListAll() (*[]database.Post, error)
 }
 
@@ -32,8 +32,12 @@ func (rs *PostResource) Create(w http.ResponseWriter, r *http.Request, _ httprou
 	post := &database.Post{}
 	err := json.NewDecoder(r.Body).Decode(post)
 	if err != nil {
-		apiErr := errors.NewBadRequest("")
-		api.RespondWithJsonStatus(w, apiErr)
+		api.RespondWithJsonStatus(w, errors.NewBadRequest("TODO", err))
+		return
+	}
+
+	if len(post.Message) > errors.PostMaxSize {
+		api.RespondWithJsonStatus(w, errors.NewPostMaxSizeExceeded())
 		return
 	}
 
@@ -43,7 +47,7 @@ func (rs *PostResource) Create(w http.ResponseWriter, r *http.Request, _ httprou
 		return
 	}
 
-	api.RespondWithJsonStatus(w, errors.NewSuccess(""))
+	api.RespondWithJson(w, post)
 }
 
 func (rs *PostResource) Get(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
@@ -63,7 +67,7 @@ func (rs *PostResource) Delete(w http.ResponseWriter, r *http.Request, ps httpro
 		return
 	}
 
-	api.RespondWithJsonStatus(w, errors.NewSuccess(""))
+	api.RespondWithJsonStatus(w, errors.NewSuccess("The post has been removed."))
 }
 
 func (rs *PostResource) ListAll(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {

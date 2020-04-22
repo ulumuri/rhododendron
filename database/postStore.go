@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 
+	"github.com/ulumuri/rhododendron/errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,55 +28,88 @@ func NewPostStore(db *mongo.Database) *PostStore {
 	}
 }
 
-const postCollectionHandle = "posts"
+const postCollectionHandle string = "posts"
 
 func (s *PostStore) Create(post *Post) (*mongo.InsertOneResult, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		return nil, errors.NewCollectionNotFound(postCollectionHandle)
+	}
+
 	postCollection := s.db.Collection(postCollectionHandle)
-	postResult, err := postCollection.InsertOne(context.Background(), post)
+	postResult, err := postCollection.InsertOne(context.TODO(), post)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewUnknown("TODO", err)
 	}
 
 	return postResult, nil
 }
 
-func (s *PostStore) Get(id primitive.ObjectID) (*Post, error) {
-	post := &Post{}
-	filter := bson.M{"_id": id}
+func (s *PostStore) Get(id string) (*Post, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		return nil, errors.NewCollectionNotFound(postCollectionHandle)
+	}
 	postCollection := s.db.Collection(postCollectionHandle)
-	err := postCollection.FindOne(context.Background(), filter).Decode(post)
+
+	post := &Post{}
+	objectID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.NewInvalidID("", err)
+	}
+
+	//opts := options.FindOne().SetSort(bson.D{{"author", getAuthor()}})
+	filter := bson.D{{"_id", objectID}}
+	err = postCollection.FindOne(context.TODO(), filter).Decode(post)
+	if err != nil {
+		return nil, errors.NewIDNotFound("", err)
 	}
 
 	return post, nil
 }
 
-func (s *PostStore) Delete(id primitive.ObjectID) (*mongo.DeleteResult, error) {
-	filter := bson.M{"_id": id}
-	postCollection := s.db.Collection(postCollectionHandle)
-	result, err := postCollection.DeleteOne(context.Background(), filter)
-	if err != nil {
-		return nil, err
+func (s *PostStore) Delete(id string) (*Post, error) {
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		return nil, errors.NewCollectionNotFound(postCollectionHandle)
 	}
 
-	return result, nil
+	postCollection := s.db.Collection(postCollectionHandle)
+	objectID, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, errors.NewInvalidID("", err)
+	}
+
+	post := &Post{}
+	//opts := options.FindOne().SetSort(bson.D{{"author", getAuthor()}})
+	filter := bson.D{{"_id", objectID}}
+	err = postCollection.FindOneAndDelete(context.TODO(), filter).Decode(post)
+	if err != nil {
+		return nil, errors.NewIDNotFound("", err)
+	}
+
+	return post, nil
 }
 
 func (s *PostStore) ListAll() (*[]Post, error) {
-	postCollection := s.db.Collection(postCollectionHandle)
-	cursor, err := postCollection.Find(context.Background(), bson.M{})
-	if err != nil {
-		return nil, err
+	ok, _ := s.db.ListCollectionNames(context.TODO(), bson.M{"name": postCollectionHandle})
+	if len(ok) == 0 {
+		return nil, errors.NewCollectionNotFound(postCollectionHandle)
 	}
-	defer cursor.Close(context.Background())
+
+	postCollection := s.db.Collection(postCollectionHandle)
+	cursor, err := postCollection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		return nil, errors.NewUnknown("", err)
+	}
+	defer cursor.Close(context.TODO())
 
 	var posts []Post
-	for cursor.Next(context.Background()) {
+	for cursor.Next(context.TODO()) {
 		post := Post{}
 		err = cursor.Decode(&post)
 		if err != nil {
-			return nil, err
+			return nil, errors.NewUnknown("", err)
 		}
 		posts = append(posts, post)
 	}

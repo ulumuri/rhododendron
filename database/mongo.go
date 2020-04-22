@@ -4,23 +4,27 @@ import (
 	"context"
 	"os"
 
+	"github.com/ulumuri/rhododendron/errors"
+
 	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func ConnectToDB() (*mongo.Database, error) {
-	dbName := "api_test"
+	const databaseName string = "api_test"
+
 	uri, err := getDotEnvVariable("DB_URI")
 	if err != nil {
-		return nil, err
-	}
-	client, err := getMongoClient(context.Background(), uri)
-	if err != nil {
-		return nil, err
+		return nil, errors.NewFailedConnection("", err)
 	}
 
-	return client.Database(dbName), nil
+	client, err := getMongoClient(context.TODO(), uri)
+	if err != nil {
+		return nil, errors.NewFailedConnection("", err)
+	}
+
+	return client.Database(databaseName), nil
 }
 
 func getMongoClient(ctx context.Context, uri string) (*mongo.Client, error) {

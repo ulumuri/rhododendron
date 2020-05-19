@@ -4,18 +4,18 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/render"
 	"github.com/julienschmidt/httprouter"
-	"github.com/ulumuri/rhododendron/database"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/ulumuri/rhododendron/DB"
+	"github.com/ulumuri/rhododendron/status"
+	"github.com/ulumuri/rhododendron/util/api"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type PostStore interface {
-	Create(*database.Post) (*mongo.InsertOneResult, error)
-	Get(primitive.ObjectID) (*database.Post, error)
-	Delete(primitive.ObjectID) (*mongo.DeleteResult, error)
-	ListAll() (*[]database.Post, error)
+	Create(*DB.Post) (*mongo.InsertOneResult, error)
+	Get(string) (*DB.Post, error)
+	Delete(string) (*DB.Post, error)
+	ListAll() (*[]DB.Post, error)
 }
 
 type PostResource struct {
@@ -29,59 +29,53 @@ func NewPostResource(store PostStore) *PostResource {
 }
 
 func (rs *PostResource) Create(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	post := &database.Post{}
+	post := &DB.Post{}
 	err := json.NewDecoder(r.Body).Decode(post)
 	if err != nil {
-		render.Respond(w, r, err.Error())
-		return
-	}
-	_, err = rs.Store.Create(post)
-	if err != nil {
-		render.Respond(w, r, err.Error())
+		api.RespondWithJsonStatus(w, status.NewBadRequest("TODO", err))
 		return
 	}
 
-	render.Respond(w, r, post)
+	if len(post.Message) > status.PostMaxSize {
+		api.RespondWithJsonStatus(w, status.NewPostMaxSizeExceeded())
+		return
+	}
+
+	_, err = rs.Store.Create(post)
+	if err != nil {
+		api.RespondWithJsonStatus(w, err)
+		return
+	}
+
+	api.RespondWithJson(w, post)
 }
 
 func (rs *PostResource) Get(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	id, err := primitive.ObjectIDFromHex(ps.ByName("id"))
+	post, err := rs.Store.Get(ps.ByName("id"))
 	if err != nil {
-		render.Respond(w, r, err.Error())
+		api.RespondWithJsonStatus(w, err)
 		return
 	}
 
-	post, err := rs.Store.Get(id)
-	if err != nil {
-		render.Respond(w, r, err.Error())
-		return
-	}
-
-	render.Respond(w, r, post)
+	api.RespondWithJson(w, post)
 }
 
 func (rs *PostResource) Delete(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-	id, err := primitive.ObjectIDFromHex(ps.ByName("id"))
+	_, err := rs.Store.Delete(ps.ByName("id"))
 	if err != nil {
-		render.Respond(w, r, err.Error())
+		api.RespondWithJsonStatus(w, err)
 		return
 	}
 
-	_, err = rs.Store.Delete(id)
-	if err != nil {
-		render.Respond(w, r, err.Error())
-		return
-	}
-
-	render.Respond(w, r, map[string]string{"result": "success"})
+	api.RespondWithJsonStatus(w, status.NewSuccess("The post has been removed."))
 }
 
 func (rs *PostResource) ListAll(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	posts, err := rs.Store.ListAll()
 	if err != nil {
-		render.Respond(w, r, err.Error())
+		api.RespondWithJsonStatus(w, err)
 		return
 	}
 
-	render.Respond(w, r, posts)
+	api.RespondWithJson(w, posts)
 }

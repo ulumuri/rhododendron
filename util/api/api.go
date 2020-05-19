@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/ulumuri/rhododendron/errors"
+	"github.com/ulumuri/rhododendron/status"
 )
 
-func RespondWithJsonStatus(w http.ResponseWriter, payload *errors.StatusError) {
-	response, err := json.Marshal(payload)
+func RespondWithJsonStatus(w http.ResponseWriter, err error) {
+	statusCode := err.(*status.StatusError).ErrStatus.Code
+	response, err := json.Marshal(err)
 	if err != nil {
-		payload.ErrStatus.Code = http.StatusInternalServerError
+		statusCode = http.StatusInternalServerError
 		_, ok := err.(*json.UnsupportedTypeError)
 		if ok {
 			response = []byte(`"Error": "UnsupportedTypeError"`)
@@ -20,14 +21,14 @@ func RespondWithJsonStatus(w http.ResponseWriter, payload *errors.StatusError) {
 	}
 
 	w.Header().Set("Content-type", "application/json")
-	w.WriteHeader(payload.ErrStatus.Code)
+	w.WriteHeader(statusCode)
 	w.Write(response)
 }
 
 func RespondWithJson(w http.ResponseWriter, payload interface{}) {
 	response, err := json.Marshal(payload)
 	if err != nil {
-		apiErr := errors.NewBadRequest("", err)
+		apiErr := status.NewBadRequest("", err)
 		RespondWithJsonStatus(w, apiErr)
 		return
 	}

@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/ulumuri/rhododendron/database"
+	"github.com/ulumuri/rhododendron/DB"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -10,7 +10,7 @@ type API struct {
 }
 
 func NewAPI(db *mongo.Database) *API {
-	postStore := database.NewPostStore(db)
+	postStore := DB.NewPostStore(db)
 	post := NewPostResource(postStore)
 
 	return &API{
